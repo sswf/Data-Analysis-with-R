@@ -1,0 +1,212 @@
+---
+title: "Prosper Loan Data Analysis"
+author: "Alexander Baranov"
+date: "26 July 2015 ã."
+output: html_document
+---
+
+```{r, echo=FALSE}
+library(ggplot2)
+library(dplyr)
+library(gridExtra)
+```
+
+# Exploration of the data
+```{r, echo=FALSE}
+loanData <- read.csv("prosperLoanData.csv")
+```
+
+## Univariate Plots Section
+
+```{r, echo=FALSE}
+names(loanData)
+summary(loanData)
+qplot(x = CreditGrade, data = loanData)
+```
+
+Urm.. Most of records without CreditGrade? It looks like it is due 'Applicable for listings pre-2009 period and will only be populated for those listings.'
+Ok. Further... Term in months
+
+```{r, echo=FALSE}
+qplot(x = Term, data = loanData, binwidth = 6)
+```
+
+It looks like there are 3 standard terms. Check terms in years
+
+```{r, echo=FALSE}
+qplot(x = Term/12, data = loanData, binwidth = 1)
+```
+
+As it could be expected - 1, 3, and 5 years.
+
+Categories of the listing: 0 - Not Available, 1 - Debt Consolidation, 2 - Home Improvement, 3 - Business, 4 - Personal Loan, 5 - Student Use, 6 - Auto, 7- Other, 8 - Baby&Adoption, 9 - Boat, 10 - Cosmetic Procedure, 11 - Engagement Ring, 12 - Green Loans, 13 - Household Expenses, 14 - Large Purchases, 15 - Medical/Dental, 16 - Motorcycle, 17 - RV, 18 - Taxes, 19 - Vacation, 20 - Wedding Loans
+
+```{r, echo=FALSE}
+qplot(x = ListingCategory..numeric., data = loanData, binwidth = 1)
+```
+
+So top-3 reasons excluding N/A are following
+1. Debt Consolidation
+2. Other
+3. Home Improvement
+
+```{r, echo=FALSE}
+qplot(x = EmploymentStatus, data = subset(loanData, !is.na(EmploymentStatus) & EmploymentStatus != 'Not available' & EmploymentStatus != ''))
+```
+
+Not surprisingly that most of loans are for employed and full-time employed
+
+```{r, echo=FALSE}
+qplot(x = BorrowerRate, data = loanData)
+```
+
+Explore it per possible groups
+
+```{r, echo=FALSE}
+qplot(x = BorrowerRate, data = loanData) + facet_wrap(~Term)
+qplot(x = BorrowerRate, data = loanData) + facet_wrap(~IncomeRange)
+```
+
+```{r, echo=FALSE}
+qplot(x = DebtToIncomeRatio, data = subset(loanData, DebtToIncomeRatio <= quantile(DebtToIncomeRatio, 0.99, na.rm = TRUE)))
+```
+
+Looks like Poisson distribution
+
+```{r, echo=FALSE}
+qplot(x = LoanOriginalAmount, data = loanData)
+```
+
+Peaks on 500, 1000, 1500, 2000, amd 2500
+
+```{r, echo=FALSE}
+qplot(x = MonthlyLoanPayment, data = loanData)
+```
+
+```{r, echo=FALSE}
+qplot(x = IncomeRange, data = subset(loanData, !is.na(IncomeRange) & IncomeRange != 'Not employed' & IncomeRange != 'Not displayed'))
+
+```
+
+## Univariate Analysis
+
+### What is the structure of your dataset?
+
+There are more than 110 thousands observations with 81 variables.
+
+### What is/are the main feature(s) of interest in your dataset?
+
+Most interesting features I believe are BorrowerRate and LoanOriginalAmount. I am going to explore how other attributes affect them.
+
+### What other features in the dataset do you think will help support your investigation into your feature(s) of interest?
+
+For the first glance they are:
+- Term
+- ListingCategory..numeric.
+- EmploymentStatus
+- DebtToIncomeRatio
+- IncomeRange
+
+### Did you create any new variables from existing variables in the dataset?
+
+Not yet
+
+## Bivariate Plots Section
+
+BorrowerRate ~ ListingCategory..numeric.
+
+```{r, echo=FALSE}
+boxplot(BorrowerRate ~ ListingCategory..numeric., data = loanData)
+```
+
+Rate differs slightly on purpose of loan.
+
+LoanOriginalAmount ~ ListingCategory..numeric.
+
+```{r, echo=FALSE}
+boxplot(LoanOriginalAmount ~ ListingCategory..numeric., data = loanData)
+```
+
+Each purpose has itsown amount distribution 
+
+```{r, echo=FALSE}
+boxplot(BorrowerRate ~ EmploymentStatus, data = subset(loanData, !is.na(EmploymentStatus) & EmploymentStatus != 'Not available' & EmploymentStatus != ''))
+```
+
+```{r, echo=FALSE}
+ggplot(aes(x = DebtToIncomeRatio, y = BorrowerRate), data = subset(loanData, DebtToIncomeRatio <= quantile(DebtToIncomeRatio, 0.99, na.rm = TRUE))) + geom_point(alpha = 1/100) + geom_line(stat = 'summary', fun.y = mean, linetype = 2, color = 2)
+```
+
+Urm... It looks like we need smoothing
+
+```{r, echo=FALSE}
+ggplot(aes(x = DebtToIncomeRatio, y = BorrowerRate), data = subset(loanData, DebtToIncomeRatio <= quantile(DebtToIncomeRatio, 0.99, na.rm = TRUE))) + geom_point(alpha = 1/100) + geom_line(stat = 'summary', fun.y = mean, linetype = 2, color = 2) + geom_smooth()
+```
+
+Now it is obvious that rate is growing with growth of DebtToIncomeRatio.
+
+LoanOriginalAmount ~ IncomeRange
+
+```{r, echo=FALSE}
+boxplot(LoanOriginalAmount ~ IncomeRange, data = subset(loanData, !is.na(IncomeRange) & IncomeRange != 'Not employed' & IncomeRange != 'Not displayed'))
+```
+
+BorrowerRate ~ IncomeRange
+
+```{r, echo=FALSE}
+boxplot(BorrowerRate ~ IncomeRange, data = subset(loanData, !is.na(IncomeRange) & IncomeRange != 'Not employed' & IncomeRange != 'Not displayed'))
+```
+
+LoanOriginalAmount ~ Term
+
+```{r, echo=FALSE}
+ggplot(aes(x = Term, y = LoanOriginalAmount), data = loanData) + geom_point(alpha = 1/100) + geom_line(stat = 'summary', fun.y = mean, linetype = 2, color = 2)
+```
+
+BorrowerRate ~ Term
+
+```{r, echo=FALSE}
+ggplot(aes(x = Term, y = BorrowerRate), data = loanData) + geom_point(alpha = 1/100) + geom_line(stat = 'summary', fun.y = mean, linetype = 2, color = 2)
+```
+
+## Bivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the investigation. How did the feature(s) of interest vary with other features in the dataset?
+
+Borrow rate dapends on DebtToIncomeRatio and Term. A bit unexpectedly to me that it does not depend on IncomeRange.
+
+## Multivariate Plots Section
+
+```{r, echo=FALSE}
+ggplot(aes(x = Term, y = BorrowerRate, color = DebtToIncomeRatio), data = subset(loanData, DebtToIncomeRatio <= quantile(DebtToIncomeRatio, 0.99, na.rm = TRUE))) + geom_point(alpha = 1/20)
+```
+
+```{r, echo=FALSE}
+ggplot(aes(x = DebtToIncomeRatio, y = BorrowerRate, color = IncomeRange), data = subset(loanData, DebtToIncomeRatio <= quantile(DebtToIncomeRatio, 0.99, na.rm = TRUE))) + geom_point(alpha = 1/20)
+```
+
+# Final Plots and Summary
+
+## Plot One
+
+```{r, echo=FALSE}
+qplot(x = BorrowerRate, data = loanData) + facet_wrap(~Term) + ggtitle("BorrowRate histograms per Terms")
+```
+
+## Plot Two
+
+```{r, echo=FALSE}
+ggplot(aes(x = DebtToIncomeRatio, y = BorrowerRate), data = subset(loanData, DebtToIncomeRatio <= quantile(DebtToIncomeRatio, 0.99, na.rm = TRUE))) + geom_point(alpha = 1/100) + geom_line(stat = 'summary', fun.y = mean, linetype = 2, color = 2) + geom_smooth() + ggtitle("BorrowRate from DebtToIncomeRatio")
+```
+
+## Plot Three
+
+```{r, echo=FALSE}
+ggplot(aes(x = Term, y = BorrowerRate), data = loanData) + geom_point(alpha = 1/100) + geom_line(stat = 'summary', fun.y = mean, linetype = 2, color = 2) + ggtitle("BorrowRate from Term in months")
+```
+
+# Reflection
+Data set contains many attributes. Not each of them is clear to me. So it was a bit hard to select attribute of interest and make short list of attributes which influence I will explore. I had to make many diagrams befor I selected purpose of exploration and made short list.
+During exploration some times I proved my expectations regarding dependencies, sometimes I did not. I expected that rate depends on DebtToIncomeRatio. Though I would also expect that it depends on borrower income though it seems does not.
+If I had more time I would improve Multivariate Plots Section and make composite attributes.
+
