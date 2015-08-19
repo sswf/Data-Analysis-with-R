@@ -5,35 +5,80 @@ date: "26 July 2015 ã."
 output: html_document
 ---
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
 library(ggplot2)
 library(dplyr)
 library(gridExtra)
+library(GGally)
 ```
 
 # Exploration of the data
-```{r, echo=FALSE}
+```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
 loanData <- read.csv("prosperLoanData.csv")
 ```
 
+Add ListingCategory factor variable that meets int ListingCategory..numeric. column
+
+```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
+loanData$ListingCategory <-as.factor(loanData$ListingCategory..numeric.)
+levels(loanData$ListingCategory) <- c("Not Available",
+                                      "Debt Consolidation",
+                                      "Home Improvement",
+                                      "Business",
+                                      "Personal Loan",
+                                      "Student Use",
+                                      "Auto",
+                                      "Other",
+                                      "Baby&Adoption",
+                                      "Boat",
+                                      "Cosmetic Procedure",
+                                      "Engagement Ring",
+                                      "Green Loans",
+                                      "Household Expenses",
+                                      "Large Purchases",
+                                      "Medical/Dental",
+                                      "Motorcycle",
+                                      "RV",
+                                      "Taxes",
+                                      "Vacation",
+                                      "Wedding Loans")
+```
+
+
 ## Univariate Plots Section
 
-```{r, echo=FALSE}
+Check distributions for some basic attributes.
+
+```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
 names(loanData)
 summary(loanData)
+```
+
+Let's start with CreditGrade
+
+```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
 qplot(x = CreditGrade, data = loanData)
 ```
 
 Urm.. Most of records without CreditGrade? It looks like it is due 'Applicable for listings pre-2009 period and will only be populated for those listings.'
+Try without NA data
+
+```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
+qplot(x = CreditGrade, 
+      data = subset(loanData, !is.na(CreditGrade) &
+                      CreditGrade != ''))
+```
+
+
 Ok. Further... Term in months
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
 qplot(x = Term, data = loanData, binwidth = 6)
 ```
 
 It looks like there are 3 standard terms. Check terms in years
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
 qplot(x = Term/12, data = loanData, binwidth = 1)
 ```
 
@@ -41,8 +86,9 @@ As it could be expected - 1, 3, and 5 years.
 
 Categories of the listing: 0 - Not Available, 1 - Debt Consolidation, 2 - Home Improvement, 3 - Business, 4 - Personal Loan, 5 - Student Use, 6 - Auto, 7- Other, 8 - Baby&Adoption, 9 - Boat, 10 - Cosmetic Procedure, 11 - Engagement Ring, 12 - Green Loans, 13 - Household Expenses, 14 - Large Purchases, 15 - Medical/Dental, 16 - Motorcycle, 17 - RV, 18 - Taxes, 19 - Vacation, 20 - Wedding Loans
 
-```{r, echo=FALSE}
-qplot(x = ListingCategory..numeric., data = loanData, binwidth = 1)
+```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
+qplot(x = ListingCategory, data = loanData, binwidth = 1) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
 So top-3 reasons excluding N/A are following
@@ -50,41 +96,65 @@ So top-3 reasons excluding N/A are following
 2. Other
 3. Home Improvement
 
-```{r, echo=FALSE}
-qplot(x = EmploymentStatus, data = subset(loanData, !is.na(EmploymentStatus) & EmploymentStatus != 'Not available' & EmploymentStatus != ''))
+```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
+# Check EmploymentStatus without records for which EmploymentStatus is unknown
+qplot(x = EmploymentStatus, 
+      data = subset(loanData, !is.na(EmploymentStatus) &
+                      EmploymentStatus != 'Not available' &
+                      EmploymentStatus != ''))
 ```
 
 Not surprisingly that most of loans are for employed and full-time employed
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
 qplot(x = BorrowerRate, data = loanData)
 ```
 
-Explore it per possible groups
+Explore it per possible groups. Starts with BorrowerRate per Term
 
-```{r, echo=FALSE}
-qplot(x = BorrowerRate, data = loanData) + facet_wrap(~Term)
-qplot(x = BorrowerRate, data = loanData) + facet_wrap(~IncomeRange)
+```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
+qplot(x = BorrowerRate, data = loanData) +
+  facet_wrap(~Term)
 ```
 
-```{r, echo=FALSE}
-qplot(x = DebtToIncomeRatio, data = subset(loanData, DebtToIncomeRatio <= quantile(DebtToIncomeRatio, 0.99, na.rm = TRUE)))
+Continue with BorrowerRate per IncomeRange
+
+```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
+qplot(x = BorrowerRate, data = loanData) +
+  facet_wrap(~IncomeRange)
 ```
 
-Looks like Poisson distribution
+Check how DebtToIncomeRatio is distributed
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
+qplot(x = DebtToIncomeRatio, 
+      data = subset(loanData, 
+                    DebtToIncomeRatio <=
+                      quantile(DebtToIncomeRatio, 0.99,
+                               na.rm = TRUE)))
+```
+
+Looks like Poisson distribution.
+Check how LoanOriginalAmount is distributed
+
+```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
 qplot(x = LoanOriginalAmount, data = loanData)
 ```
 
 Peaks on 500, 1000, 1500, 2000, amd 2500
+Further check MonthlyLoanPayment
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
 qplot(x = MonthlyLoanPayment, data = loanData)
 ```
 
-```{r, echo=FALSE}
-qplot(x = IncomeRange, data = subset(loanData, !is.na(IncomeRange) & IncomeRange != 'Not employed' & IncomeRange != 'Not displayed'))
+and IncomeRange
+
+```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
+qplot(x = IncomeRange, 
+      data = subset(loanData, !is.na(IncomeRange) & 
+                      IncomeRange != 'Not employed' & 
+                      IncomeRange != 'Not displayed'))
 
 ```
 
@@ -102,7 +172,7 @@ Most interesting features I believe are BorrowerRate and LoanOriginalAmount. I a
 
 For the first glance they are:
 - Term
-- ListingCategory..numeric.
+- ListingCategory
 - EmploymentStatus
 - DebtToIncomeRatio
 - IncomeRange
@@ -113,100 +183,210 @@ Not yet
 
 ## Bivariate Plots Section
 
-BorrowerRate ~ ListingCategory..numeric.
+Start with checking BorrowerRate per ListingCategory
 
-```{r, echo=FALSE}
-boxplot(BorrowerRate ~ ListingCategory..numeric., data = loanData)
+```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
+boxplot(BorrowerRate ~ ListingCategory, data = loanData) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
-Rate differs slightly on purpose of loan.
+Rate differs slightly on purpose of loan. Continue with LoanOriginalAmount per ListingCategory
 
-LoanOriginalAmount ~ ListingCategory..numeric.
-
-```{r, echo=FALSE}
-boxplot(LoanOriginalAmount ~ ListingCategory..numeric., data = loanData)
+```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
+boxplot(LoanOriginalAmount ~ ListingCategory, data = loanData) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
-Each purpose has itsown amount distribution 
+Each purpose has itsown amount distribution. Let's group by ListingCategory and check how mean depends each other
 
-```{r, echo=FALSE}
-boxplot(BorrowerRate ~ EmploymentStatus, data = subset(loanData, !is.na(EmploymentStatus) & EmploymentStatus != 'Not available' & EmploymentStatus != ''))
+```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
+loanData.by_ListingCategory <- loanData %>%
+  group_by(ListingCategory) %>%
+  summarize(LoanOriginalAmount_mean = mean(LoanOriginalAmount),
+            BorrowerRate_median = median(BorrowerRate),
+            n = n())
+ggplot(aes(x = LoanOriginalAmount_mean, y = BorrowerRate_median), 
+       data = loanData.by_ListingCategory) +
+  geom_point(alpha = 1/10) +
+  geom_smooth()
 ```
 
-```{r, echo=FALSE}
-ggplot(aes(x = DebtToIncomeRatio, y = BorrowerRate), data = subset(loanData, DebtToIncomeRatio <= quantile(DebtToIncomeRatio, 0.99, na.rm = TRUE))) + geom_point(alpha = 1/100) + geom_line(stat = 'summary', fun.y = mean, linetype = 2, color = 2)
+Consider dataset from another point. Per EmploymentStatus groups. Start with BorrowerRate
+
+```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
+# consider only records for which EmploymentStatus is known
+loanData.employed <- subset(loanData, !is.na(EmploymentStatus) &
+                             EmploymentStatus != 'Not available' &
+                             EmploymentStatus != '')
+boxplot(BorrowerRate ~ EmploymentStatus, 
+        data = loanData.employed)
+```
+
+Continue with LoanOriginalAmount
+
+```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
+boxplot(LoanOriginalAmount ~ EmploymentStatus, 
+        data = loanData.employed)
+```
+
+And groupby and plot dependency of mean values
+
+```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
+loanData.by_EmploymentStatus <- loanData.employed %>%
+  group_by(EmploymentStatus) %>%
+  summarize(LoanOriginalAmount_mean = mean(LoanOriginalAmount),
+            BorrowerRate_median = median(BorrowerRate),
+            n = n())
+ggplot(aes(x = LoanOriginalAmount_mean, y = BorrowerRate_median), 
+       data = loanData.by_EmploymentStatus) +
+  geom_point(alpha = 1/10) +
+  geom_smooth()
+```
+
+Urm. Probably there are too few points.
+Now check BorrowerRate from DebtToIncomeRatio.
+
+```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
+# Drop top 1 % and NA records
+ggplot(aes(x = DebtToIncomeRatio, y = BorrowerRate), 
+       data = subset(loanData, 
+                     DebtToIncomeRatio <= quantile(DebtToIncomeRatio, 
+                                                   0.99, na.rm = TRUE))) +
+  geom_point(alpha = 1/100) + 
+  geom_line(stat = 'summary', fun.y = mean, linetype = 2, color = 2)
 ```
 
 Urm... It looks like we need smoothing
 
-```{r, echo=FALSE}
-ggplot(aes(x = DebtToIncomeRatio, y = BorrowerRate), data = subset(loanData, DebtToIncomeRatio <= quantile(DebtToIncomeRatio, 0.99, na.rm = TRUE))) + geom_point(alpha = 1/100) + geom_line(stat = 'summary', fun.y = mean, linetype = 2, color = 2) + geom_smooth()
+```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
+# Drop top 1 % and NA records
+# Add smootinhg
+ggplot(aes(x = DebtToIncomeRatio, y = BorrowerRate), 
+       data = subset(loanData, 
+                     DebtToIncomeRatio <= quantile(DebtToIncomeRatio, 
+                                                   0.99, na.rm = TRUE))) +
+  geom_point(alpha = 1/100) +
+  geom_line(stat = 'summary', fun.y = mean, linetype = 2, color = 2) +
+  geom_smooth()
+```
+
+Remove original mean line smoothing
+
+```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
+# Drop top 1 % and NA records
+# Add smootinhg, remove mean line without smoothing
+ggplot(aes(x = DebtToIncomeRatio, y = BorrowerRate), 
+       data = subset(loanData, 
+                     DebtToIncomeRatio <= quantile(DebtToIncomeRatio, 
+                                                   0.99, na.rm = TRUE))) +
+  geom_point(alpha = 1/100) +
+  geom_smooth()
 ```
 
 Now it is obvious that rate is growing with growth of DebtToIncomeRatio.
 
+Now check a few more dependencies to see if we can find anything interesting.
+
 LoanOriginalAmount ~ IncomeRange
 
-```{r, echo=FALSE}
-boxplot(LoanOriginalAmount ~ IncomeRange, data = subset(loanData, !is.na(IncomeRange) & IncomeRange != 'Not employed' & IncomeRange != 'Not displayed'))
+```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
+# Drop NA, Not employed and Not displayed records
+boxplot(LoanOriginalAmount ~ IncomeRange, 
+        data = subset(loanData, 
+                      !is.na(IncomeRange) & IncomeRange != 'Not employed' &
+                        IncomeRange != 'Not displayed'))
 ```
 
 BorrowerRate ~ IncomeRange
 
-```{r, echo=FALSE}
-boxplot(BorrowerRate ~ IncomeRange, data = subset(loanData, !is.na(IncomeRange) & IncomeRange != 'Not employed' & IncomeRange != 'Not displayed'))
+```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
+# Drop NA, Not employed and Not displayed records
+boxplot(BorrowerRate ~ IncomeRange, 
+        data = subset(loanData, !is.na(IncomeRange) &
+                        IncomeRange != 'Not employed' &
+                        IncomeRange != 'Not displayed'))
 ```
 
 LoanOriginalAmount ~ Term
 
-```{r, echo=FALSE}
-ggplot(aes(x = Term, y = LoanOriginalAmount), data = loanData) + geom_point(alpha = 1/100) + geom_line(stat = 'summary', fun.y = mean, linetype = 2, color = 2)
+```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
+ggplot(aes(x = jitter(Term), y = LoanOriginalAmount), data = loanData) +
+  geom_point(alpha = 1/50) +
+  geom_smooth()
 ```
+
+LoanOriginalAmount grows with Term
 
 BorrowerRate ~ Term
 
-```{r, echo=FALSE}
-ggplot(aes(x = Term, y = BorrowerRate), data = loanData) + geom_point(alpha = 1/100) + geom_line(stat = 'summary', fun.y = mean, linetype = 2, color = 2)
+```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
+ggplot(aes(x = jitter(Term), y = BorrowerRate), data = loanData) +
+  geom_point(alpha = 1/50) +
+  geom_smooth(color=2)
 ```
+
+BorrowerRate gorws with Term from 1 till 3 years and further remains about constant
 
 ## Bivariate Analysis
 
 ### Talk about some of the relationships you observed in this part of the investigation. How did the feature(s) of interest vary with other features in the dataset?
 
-Borrow rate dapends on DebtToIncomeRatio and Term. A bit unexpectedly to me that it does not depend on IncomeRange.
+Borrow rate depends on DebtToIncomeRatio and Term. A bit unexpectedly to me that it does not depend on IncomeRange. BorrowerRate gorws with Term from 1 till 3 years and further remains about constant
 
 ## Multivariate Plots Section
 
-```{r, echo=FALSE}
-ggplot(aes(x = Term, y = BorrowerRate, color = DebtToIncomeRatio), data = subset(loanData, DebtToIncomeRatio <= quantile(DebtToIncomeRatio, 0.99, na.rm = TRUE))) + geom_point(alpha = 1/20)
+```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
+# Drop top 1 % and NA records
+ggplot(aes(x = Term, y = BorrowerRate, color = DebtToIncomeRatio),
+       data = subset(loanData, 
+                     DebtToIncomeRatio <= quantile(DebtToIncomeRatio,
+                                                   0.99, na.rm = TRUE))) +
+  geom_point(alpha = 1/20)
 ```
 
-```{r, echo=FALSE}
-ggplot(aes(x = DebtToIncomeRatio, y = BorrowerRate, color = IncomeRange), data = subset(loanData, DebtToIncomeRatio <= quantile(DebtToIncomeRatio, 0.99, na.rm = TRUE))) + geom_point(alpha = 1/20)
+```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
+# Drop top 1 % and NA records
+ggplot(aes(x = DebtToIncomeRatio, y = BorrowerRate, color = IncomeRange), 
+       data = subset(loanData, 
+                     DebtToIncomeRatio <= quantile(DebtToIncomeRatio,
+                                                   0.99, na.rm = TRUE))) +
+  geom_point(alpha = 1/20)
 ```
 
 # Final Plots and Summary
 
 ## Plot One
 
-```{r, echo=FALSE}
-qplot(x = BorrowerRate, data = loanData) + facet_wrap(~Term) + ggtitle("BorrowRate histograms per Terms")
+```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
+qplot(x = BorrowerRate, data = loanData) + facet_wrap(~Term) +
+  ggtitle("BorrowRate histograms per Terms")
 ```
 
 ## Plot Two
 
-```{r, echo=FALSE}
-ggplot(aes(x = DebtToIncomeRatio, y = BorrowerRate), data = subset(loanData, DebtToIncomeRatio <= quantile(DebtToIncomeRatio, 0.99, na.rm = TRUE))) + geom_point(alpha = 1/100) + geom_line(stat = 'summary', fun.y = mean, linetype = 2, color = 2) + geom_smooth() + ggtitle("BorrowRate from DebtToIncomeRatio")
+```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
+# Drop top 1 % and NA records
+# Add smootinhg
+ggplot(aes(x = DebtToIncomeRatio, y = BorrowerRate), 
+       data = subset(loanData, 
+                     DebtToIncomeRatio <= quantile(DebtToIncomeRatio,
+                                                   0.99, na.rm = TRUE))) +
+  geom_point(alpha = 1/100) +
+#  geom_line(stat = 'summary', fun.y = mean, linetype = 2, color = 2) +
+  geom_smooth() +
+  ggtitle("BorrowRate from DebtToIncomeRatio")
 ```
 
 ## Plot Three
 
-```{r, echo=FALSE}
-ggplot(aes(x = Term, y = BorrowerRate), data = loanData) + geom_point(alpha = 1/100) + geom_line(stat = 'summary', fun.y = mean, linetype = 2, color = 2) + ggtitle("BorrowRate from Term in months")
+```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
+ggplot(aes(x = jitter(Term), y = BorrowerRate), data = loanData) +
+  geom_point(alpha = 1/50) +
+  geom_smooth(color=2) +
+  ggtitle("BorrowRate from Term in months")
 ```
 
 # Reflection
-Data set contains many attributes. Not each of them is clear to me. So it was a bit hard to select attribute of interest and make short list of attributes which influence I will explore. I had to make many diagrams befor I selected purpose of exploration and made short list.
+Data set contains many attributes. Not each of them is clear to me. I seleted BorrowerRate, DebtToIncomeRatio and LoanOriginalAmount as most interesting attributes.
 During exploration some times I proved my expectations regarding dependencies, sometimes I did not. I expected that rate depends on DebtToIncomeRatio. Though I would also expect that it depends on borrower income though it seems does not.
 If I had more time I would improve Multivariate Plots Section and make composite attributes.
-
