@@ -1,7 +1,7 @@
 ---
 title: "Prosper Loan Data Analysis"
 author: "Alexander Baranov"
-date: "26 July 2015 ã."
+date: "22 August 2015"
 output: html_document
 ---
 
@@ -219,14 +219,16 @@ loanData.employed <- subset(loanData, !is.na(EmploymentStatus) &
                              EmploymentStatus != 'Not available' &
                              EmploymentStatus != '')
 boxplot(BorrowerRate ~ EmploymentStatus, 
-        data = loanData.employed)
+        data = loanData.employed) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
 Continue with LoanOriginalAmount
 
 ```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
 boxplot(LoanOriginalAmount ~ EmploymentStatus, 
-        data = loanData.employed)
+        data = loanData.employed) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
 And groupby and plot dependency of mean values
