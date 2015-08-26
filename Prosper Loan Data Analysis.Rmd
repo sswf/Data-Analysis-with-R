@@ -1,7 +1,7 @@
 ---
 title: "Prosper Loan Data Analysis"
 author: "Alexander Baranov"
-date: "22 August 2015"
+date: "26 August 2015"
 output: html_document
 ---
 
@@ -10,7 +10,10 @@ library(ggplot2)
 library(dplyr)
 library(gridExtra)
 library(GGally)
+library(RColorBrewer)
 ```
+
+The dataset is about prosper loans. It contains records for number of person to person loans. It would be interesting to check who borrow money, what amount, what rate and how rate depends on other attributes.
 
 # Exploration of the data
 ```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
@@ -52,6 +55,46 @@ Check distributions for some basic attributes.
 ```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
 names(loanData)
 summary(loanData)
+```
+
+Unfortunately I was unable to run gpairs on my laptop. It worked too long anf inally hung each time. I did subsetting of several columns and run ggpairs against narrowed dataset.
+Finally I skip it from this report due its large size and less informativity.
+
+```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
+loanData.forggpairs <- loanData %>%
+  select(ListingCategory,
+         Term,
+         #BorrowerAPR,
+         BorrowerRate,
+         LenderYield,
+         EstimatedEffectiveYield,
+         #EstimatedLoss,
+         #EstimatedReturn,
+         ProsperScore,
+         #Occupation,
+         EmploymentStatus,
+         #EmploymentStatusDuration,
+         #IsBorrowerHomeowner,
+         #CreditScoreRangeLower,
+         #CreditScoreRangeUpper,
+         CurrentCreditLines,
+         #OpenCreditLines,
+         #TotalCreditLinespast7years,
+         #OpenRevolvingAccounts,
+         #OpenRevolvingMonthlyPayment,
+         #InquiriesLast6Months,
+         #TotalInquiries,
+         #CurrentDelinquencies,
+         AmountDelinquent,
+         #DelinquenciesLast7Years,
+         #RevolvingCreditBalance,
+         #BankcardUtilization,
+         #AvailableBankcardCredit,
+         DebtToIncomeRatio,
+         IncomeRange)
+         #IncomeVerifiable,
+         #StatedMonthlyIncome)
+# ggpairs(loanData.forggpairs)
 ```
 
 Let's start with CreditGrade
@@ -104,7 +147,7 @@ qplot(x = EmploymentStatus,
                       EmploymentStatus != ''))
 ```
 
-Not surprisingly that most of loans are for employed and full-time employed
+Not surprisingly that most of loans are for employed and full-time employed. Lender needs to be sure that loan will be payed. Most probability of returns for people who has costant income. Such people is employed.
 
 ```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
 qplot(x = BorrowerRate, data = loanData)
@@ -141,7 +184,7 @@ Check how LoanOriginalAmount is distributed
 qplot(x = LoanOriginalAmount, data = loanData)
 ```
 
-Peaks on 500, 1000, 1500, 2000, amd 2500
+Peaks on 500, 1000, 1500, 2000, amd 2500. Returning back to Listing histogram we saw that most popular categories are debt consolidation and other. People tend to borrow round amount of money like 500, 1000, 2000 etc
 Further check MonthlyLoanPayment
 
 ```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
@@ -186,28 +229,33 @@ Not yet
 Start with checking BorrowerRate per ListingCategory
 
 ```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
-boxplot(BorrowerRate ~ ListingCategory, data = loanData) +
+ggplot(aes(x = ListingCategory, y = BorrowerRate), 
+       data = loanData) +
+  geom_boxplot() +
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
-Rate differs slightly on purpose of loan. Continue with LoanOriginalAmount per ListingCategory
+Rate differs slightly on purpose of loan. Most expensive rates for Cosmetic Procedures and Houshold Expenses. Those purposes are considere too risky and so rate is high. Cheapest loan is Personal Loan. I believe it is due lender and borrower know each other well enough to be sure in borrowers ability to return. 
+Continue with LoanOriginalAmount per ListingCategory
 
 ```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
-boxplot(LoanOriginalAmount ~ ListingCategory, data = loanData) +
+ggplot(aes(x = ListingCategory, y = LoanOriginalAmount), 
+       data = loanData) +
+  geom_boxplot() +
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
-Each purpose has itsown amount distribution. Let's group by ListingCategory and check how mean depends each other
+Check how BorrowerRate changes with LoanOriginalAmount
 
 ```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
-loanData.by_ListingCategory <- loanData %>%
-  group_by(ListingCategory) %>%
-  summarize(LoanOriginalAmount_mean = mean(LoanOriginalAmount),
-            BorrowerRate_median = median(BorrowerRate),
-            n = n())
-ggplot(aes(x = LoanOriginalAmount_mean, y = BorrowerRate_median), 
-       data = loanData.by_ListingCategory) +
-  geom_point(alpha = 1/10) +
+#loanData.by_ListingCategory <- loanData %>%
+#  group_by(ListingCategory) %>%
+#  summarize(LoanOriginalAmount_mean = #mean(LoanOriginalAmount),
+#            BorrowerRate_mean = mean(BorrowerRate),
+#            n = n())
+ggplot(aes(x = LoanOriginalAmount, y = BorrowerRate), 
+       data = loanData) +
+  geom_point(alpha = 1/20) +
   geom_smooth()
 ```
 
@@ -218,34 +266,21 @@ Consider dataset from another point. Per EmploymentStatus groups. Start with Bor
 loanData.employed <- subset(loanData, !is.na(EmploymentStatus) &
                              EmploymentStatus != 'Not available' &
                              EmploymentStatus != '')
-boxplot(BorrowerRate ~ EmploymentStatus, 
-        data = loanData.employed) +
+ggplot(aes(x = EmploymentStatus, y = BorrowerRate), 
+       data = loanData.employed) +
+  geom_boxplot() +
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
 Continue with LoanOriginalAmount
 
 ```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
-boxplot(LoanOriginalAmount ~ EmploymentStatus, 
-        data = loanData.employed) +
+ggplot(aes(x = EmploymentStatus, y = LoanOriginalAmount), 
+       data = loanData.employed) +
+  geom_boxplot() +
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
-And groupby and plot dependency of mean values
-
-```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
-loanData.by_EmploymentStatus <- loanData.employed %>%
-  group_by(EmploymentStatus) %>%
-  summarize(LoanOriginalAmount_mean = mean(LoanOriginalAmount),
-            BorrowerRate_median = median(BorrowerRate),
-            n = n())
-ggplot(aes(x = LoanOriginalAmount_mean, y = BorrowerRate_median), 
-       data = loanData.by_EmploymentStatus) +
-  geom_point(alpha = 1/10) +
-  geom_smooth()
-```
-
-Urm. Probably there are too few points.
 Now check BorrowerRate from DebtToIncomeRatio.
 
 ```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
@@ -293,20 +328,26 @@ LoanOriginalAmount ~ IncomeRange
 
 ```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
 # Drop NA, Not employed and Not displayed records
-boxplot(LoanOriginalAmount ~ IncomeRange, 
-        data = subset(loanData, 
-                      !is.na(IncomeRange) & IncomeRange != 'Not employed' &
-                        IncomeRange != 'Not displayed'))
+ggplot(aes(x = IncomeRange, y = LoanOriginalAmount), 
+       data = subset(loanData,
+                     !is.na(IncomeRange) &
+                       IncomeRange != 'Not employed' &
+                       IncomeRange != 'Not displayed')) +
+  geom_boxplot() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
 BorrowerRate ~ IncomeRange
 
 ```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
 # Drop NA, Not employed and Not displayed records
-boxplot(BorrowerRate ~ IncomeRange, 
-        data = subset(loanData, !is.na(IncomeRange) &
-                        IncomeRange != 'Not employed' &
-                        IncomeRange != 'Not displayed'))
+ggplot(aes(x = IncomeRange, y = BorrowerRate), 
+       data = subset(loanData,
+                     !is.na(IncomeRange) &
+                       IncomeRange != 'Not employed' &
+                       IncomeRange != 'Not displayed')) +
+  geom_boxplot() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
 LoanOriginalAmount ~ Term
@@ -333,35 +374,37 @@ BorrowerRate gorws with Term from 1 till 3 years and further remains about const
 
 ### Talk about some of the relationships you observed in this part of the investigation. How did the feature(s) of interest vary with other features in the dataset?
 
-Borrow rate depends on DebtToIncomeRatio and Term. A bit unexpectedly to me that it does not depend on IncomeRange. BorrowerRate gorws with Term from 1 till 3 years and further remains about constant
+As we see from picture of BorrowRate ~ DebtToIncomeRatio and BorrowRate ~ Term the rate depends at least on DebtToIncomeRatio and Term (there are possible other paramaeters affecting it). A bit unexpectedly to me that it does not depend on IncomeRange. BorrowerRate grows with Term from 1 till 3 years and further remains about constant
 
 ## Multivariate Plots Section
 
-```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
-# Drop top 1 % and NA records
-ggplot(aes(x = Term, y = BorrowerRate, color = DebtToIncomeRatio),
-       data = subset(loanData, 
-                     DebtToIncomeRatio <= quantile(DebtToIncomeRatio,
-                                                   0.99, na.rm = TRUE))) +
-  geom_point(alpha = 1/20)
-```
+I'm providing graph advised by tutor.
 
 ```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
+# Advised by tutor
 # Drop top 1 % and NA records
-ggplot(aes(x = DebtToIncomeRatio, y = BorrowerRate, color = IncomeRange), 
-       data = subset(loanData, 
-                     DebtToIncomeRatio <= quantile(DebtToIncomeRatio,
-                                                   0.99, na.rm = TRUE))) +
-  geom_point(alpha = 1/20)
+ggplot(aes(x = DebtToIncomeRatio, y = BorrowerRate,
+           color = IncomeRange), 
+       data = subset(loanData,
+                     IncomeRange != 'Not displayed' &
+                     DebtToIncomeRatio <=                                           quantile(DebtToIncomeRatio,
+                                  0.99,
+                                  na.rm = TRUE))) +
+  geom_point(alpha=1/2) + geom_smooth(size=1) +
+  scale_colour_brewer(palette = 1)
 ```
+
+For most of groups BorrowRate grows with DebtToIncomeRatio. Point that meets 0 is higher with lower IncomeRange.
+It is interesting curve for Not employed group. It is not monotone. I think it is due other attributes affects much BorrowRate for this group.
 
 # Final Plots and Summary
 
 ## Plot One
 
 ```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
-qplot(x = BorrowerRate, data = loanData) + facet_wrap(~Term) +
-  ggtitle("BorrowRate histograms per Terms")
+qplot(x = BorrowerRate * 100, data = loanData) + facet_wrap(~Term) +
+  xlab("Borrower Rate, %") +
+  ggtitle("BorrowRate histograms per Terms in months")
 ```
 
 ## Plot Two
@@ -369,26 +412,31 @@ qplot(x = BorrowerRate, data = loanData) + facet_wrap(~Term) +
 ```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
 # Drop top 1 % and NA records
 # Add smootinhg
-ggplot(aes(x = DebtToIncomeRatio, y = BorrowerRate), 
+ggplot(aes(x = DebtToIncomeRatio * 100, y = BorrowerRate * 100), 
        data = subset(loanData, 
                      DebtToIncomeRatio <= quantile(DebtToIncomeRatio,
                                                    0.99, na.rm = TRUE))) +
   geom_point(alpha = 1/100) +
 #  geom_line(stat = 'summary', fun.y = mean, linetype = 2, color = 2) +
   geom_smooth() +
+  coord_cartesian(ylim=c(0, 40)) +
+  xlab("Debt To Income Ratio, %") +
+  ylab("Borrower Rate, %") +
   ggtitle("BorrowRate from DebtToIncomeRatio")
 ```
 
 ## Plot Three
 
 ```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
-ggplot(aes(x = jitter(Term), y = BorrowerRate), data = loanData) +
+ggplot(aes(x = jitter(Term), y = BorrowerRate * 100), data = loanData) +
   geom_point(alpha = 1/50) +
   geom_smooth(color=2) +
+  xlab("Term, months") +
+  ylab("Borrower Rate, %") +
   ggtitle("BorrowRate from Term in months")
 ```
 
 # Reflection
-Data set contains many attributes. Not each of them is clear to me. I seleted BorrowerRate, DebtToIncomeRatio and LoanOriginalAmount as most interesting attributes.
+Data set contains many attributes. I seleted BorrowerRate, DebtToIncomeRatio and LoanOriginalAmount as most interesting attributes.
 During exploration some times I proved my expectations regarding dependencies, sometimes I did not. I expected that rate depends on DebtToIncomeRatio. Though I would also expect that it depends on borrower income though it seems does not.
 If I had more time I would improve Multivariate Plots Section and make composite attributes.
