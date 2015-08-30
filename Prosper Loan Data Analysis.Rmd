@@ -1,9 +1,16 @@
 ---
 title: "Prosper Loan Data Analysis"
 author: "Alexander Baranov"
-date: "26 August 2015"
+date: "30 August 2015"
 output: html_document
 ---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8,
+                      fig.path='Figs/',
+                      echo=FALSE, warning=FALSE,
+                      message=FALSE)
+```
 
 ```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
 library(ggplot2)
@@ -401,13 +408,7 @@ It is interesting curve for Not employed group. It is not monotone. I think it i
 
 ## Plot One
 
-```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
-qplot(x = BorrowerRate * 100, data = loanData) + facet_wrap(~Term) +
-  xlab("Borrower Rate, %") +
-  ggtitle("BorrowRate histograms per Terms in months")
-```
-
-## Plot Two
+This plot shows dependency of rate on debt to income ratio. Indeed, people who have low debt in comparision to income are expected to return the loan most probably. On the other hand people having high debt load on their budget are close to default and so lending them money is more risky which should make the rate higher. The plot shows it. Also there is a stable part of rate curve (between abot 5 and 25 %). People with ration in that interval are considered as normal borrowers.
 
 ```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
 # Drop top 1 % and NA records
@@ -425,7 +426,9 @@ ggplot(aes(x = DebtToIncomeRatio * 100, y = BorrowerRate * 100),
   ggtitle("BorrowRate from DebtToIncomeRatio")
 ```
 
-## Plot Three
+## Plot Two
+
+Another attribute Borrower Rate depends on is term of loan. The rate is growing from 12 to 36 month and further it is about stable up to 60 (which is max term)
 
 ```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
 ggplot(aes(x = jitter(Term), y = BorrowerRate * 100), data = loanData) +
@@ -436,7 +439,32 @@ ggplot(aes(x = jitter(Term), y = BorrowerRate * 100), data = loanData) +
   ggtitle("BorrowRate from Term in months")
 ```
 
+## Plot Three
+
+It is like Plot One but with more details per group of Income Range.
+In addition to findings of Plot One there are following ideas:
+- People with lowest income range have higher rate
+- People that are not employed do not have momotone curve. It is possible due other attributes are more influencing for such group
+- Different groups have different max DebtToIncomeRatio. Lowest one is for Not employed people
+
+```{r, echo=FALSE, cache=TRUE, cache.path = 'cache/', fig.path='figure/'}
+# Drop top 1 % and NA records
+ggplot(aes(x = DebtToIncomeRatio * 100, y = BorrowerRate * 100,
+           color = IncomeRange), 
+       data = subset(loanData,
+                     IncomeRange != 'Not displayed' &
+                     DebtToIncomeRatio <=                                           quantile(DebtToIncomeRatio,
+                                  0.99,
+                                  na.rm = TRUE))) +
+  geom_point(alpha=1/2) + geom_smooth(size=1) +
+  scale_colour_brewer(palette = 1) +
+  xlab("Debt To Income Ratio, %") +
+  ylab("Borrower Rate, %") +
+  ggtitle("BorrowRate from DebtToIncomeRatio per IncomeRange groups")
+```
+
 # Reflection
-Data set contains many attributes. I seleted BorrowerRate, DebtToIncomeRatio and LoanOriginalAmount as most interesting attributes.
+Data set contains many attributes. I selected BorrowerRate, DebtToIncomeRatio and LoanOriginalAmount as most interesting attributes.
+I had technical issues with selecting attributes. ggpair worked too mahc and hung on the whole set so I had to manually filter part of attributes. To make it propriately I had to dig into business side. I understood part of attributes from my previous experience but about half of them were not clear.
 During exploration some times I proved my expectations regarding dependencies, sometimes I did not. I expected that rate depends on DebtToIncomeRatio. Though I would also expect that it depends on borrower income though it seems does not.
-If I had more time I would improve Multivariate Plots Section and make composite attributes.
+If I had more time I would improve Multivariate Plots Section and make composite attributes. It'd be interesting to check how not emplyed people are scored for loan, since they seem not have stable income and so they should be scored on differet way than usual.
